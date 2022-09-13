@@ -37,57 +37,6 @@ class HBNBCommand(cmd.Cmd):
         if not sys.__stdin__.isatty():
             print('(hbnb)')
 
-    def precmd(self, line):
-        """Reformat command line for advanced command syntax.
-
-        Usage: <class name>.<command>([<id> [<*args> or <**kwargs>]])
-        (Brackets denote optional fields in usage example.)
-        """
-        _cmd = _cls = _id = _args = ''  # initialize line elements
-
-        # scan for general formating - i.e '.', '(', ')'
-        if not ('.' in line and '(' in line and ')' in line):
-            return line
-
-        try:  # parse line left to right
-            pline = line[:]  # parsed line
-
-            # isolate <class name>
-            _cls = pline[:pline.find('.')]
-
-            # isolate and validate <command>
-            _cmd = pline[pline.find('.') + 1:pline.find('(')]
-            if _cmd not in HBNBCommand.dot_cmds:
-                raise Exception
-
-            # if parantheses contain arguments, parse them
-            pline = pline[pline.find('(') + 1:pline.find(')')]
-            if pline:
-                # partition args: (<id>, [<delim>], [<*args>])
-                pline = pline.partition(', ')  # pline convert to tuple
-
-                # isolate _id, stripping quotes
-                _id = pline[0].replace('\"', '')
-                # possible bug here:
-                # empty quotes register as empty _id when replaced
-
-                # if arguments exist beyond _id
-                pline = pline[2].strip()  # pline is now str
-                if pline:
-                    # check for *args or **kwargs
-                    if pline[0] == '{' and pline[-1] == '}'\
-                            and type(eval(pline)) is dict:
-                        _args = pline
-                    else:
-                        _args = pline.replace(',', '')
-                        # _args = _args.replace('\"', '')
-            line = ' '.join([_cmd, _cls, _id, _args])
-
-        except Exception as mess:
-            pass
-        finally:
-            return line
-
     def postcmd(self, stop, line):
         """Prints if isatty is false"""
         if not sys.__stdin__.isatty():
@@ -117,30 +66,32 @@ class HBNBCommand(cmd.Cmd):
 
     def do_create(self, args):
         """ Create an object of any class"""
-        if not args:
+        arg_list = args.split(" ")
+        if len(arg_list) < 1:
             print("** class name missing **")
             return
-        try:
-            args = shlex.split(args)
-            new_instance = eval(args[0])()
-            for attr in args[1:]:
-                try:
-                    key = attr.split("=")[0]
-                    value = attr.split("=")[1]
-                    if hasattr(new_instance, key) is True:
-                        value = value.replace("_", " ")
-                        try:
-                            value = eval(value)
-                        except (Exception):
-                            pass
-                        setattr(new_instance, key, value)
-                except (ValueError, IndexError):
-                    pass
+        if (arg_list[0] in HBNBCommand.classes.keys()):
+            new_instance = HBNBCommand.classes[arg_list[0]]()
+            if len(arg_list) > 1:
+                dic = {}
+                for arg in range(1, len(arg_list)):
+                    k = arg_list[arg].split("=")
+                    dic[k[0]] = k[1]
+                for key, value in dic.items():
+                    if (value.startswith('"')):
+                        value = value[1:-1]
+                        value = value.replace('"', '\\')
+                        value = value.replace('_', ' ')
+                    elif "." in value:
+                        value = float(value)
+                    else:
+                        if type(value) == int:
+                            value = int(value)
+                    setattr(new_instance, key, value)
             new_instance.save()
-            print(new_instance.id)
-        except (Exception):
+            print("{}".format(new_instance.id))
+        else:
             print("** class doesn't exist **")
-            return
 
     def help_create(self):
         """ Help information for the create method """
