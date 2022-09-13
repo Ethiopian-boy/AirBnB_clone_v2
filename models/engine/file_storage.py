@@ -32,21 +32,13 @@ class FileStorage:
     def save(self):
         """Saves storage dictionary to file"""
         temp_dict = {}
-        for k, val in FileStorage.__objects.items():
+        for k, val in list(self.__objects.items()):
             temp_dict[k] = val.to_dict()
-        with open(FileStorage.__file_path, 'w', encoding="UTF8") as f:
+        with open(self.__file_path, 'w', encoding="UTF8") as f:
             json.dump(temp_dict, f)
 
     def reload(self):
         """Loads storage dictionary from file"""
-        from models.base_model import BaseModel
-        from models.user import User
-        from models.place import Place
-        from models.state import State
-        from models.city import City
-        from models.amenity import Amenity
-        from models.review import Review
-
         classes = {
                     'BaseModel': BaseModel, 'User': User, 'Place': Place,
                     'State': State, 'City': City, 'Amenity': Amenity,
@@ -54,9 +46,9 @@ class FileStorage:
                   }
         try:
             temp = {}
-            with open(FileStorage.__file_path, 'r') as f:
+            with open(self.__file_path, 'r') as f:
                 temp = json.load(f)
-                for key, val in temp.items():
+                for key, val in list(temp.items()):
                     self.all()[key] = classes[val['__class__']](**val)
         except FileNotFoundError:
             pass
@@ -64,6 +56,10 @@ class FileStorage:
     def delete(self, obj=None):
         if obj is not None:
             key = str(obj.__class__.__name__) + "." + str(obj.id)
-            if key in FileStorage.__objects.keys():
-                FileStorage.__objects.pop(key, None)
+            if key in self.__objects.keys():
+                self.__objects.pop(key, None)
                 self.save()
+
+    def close(self):
+        """ Deseralize json files to object """
+        self.reload()

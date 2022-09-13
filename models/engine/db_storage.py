@@ -37,20 +37,25 @@ class DBStorage:
         """
         Query current database session
         """
-        classes = [City, User, State, Place, Review, Amenity]
-        dictionary = {}
-        query = []
+        classes = {'User': User, 'Place': Place, 'State': State, 'City': City,
+                   'Amenity': Amenity, 'Review': Review}
 
-        if cls:
-            query = self.__session.query(cls).all()
+        db_dict = {}
+
+        if cls != "":
+            objs = self.__session.query(self.classes[cls]).all()
+            for obj in objs:
+                key = "{}.{}".format(obj.__class__.name, obj.id)
+                db_dict[key] = obj
+            return db_dict
         else:
-            for cls in classes:
-                query += self.__session.query(cls).all()
-
-        for val in query:
-            key = "{}.{}".format(type(val).__name__, val.id)
-            dictionary[key] = val
-        return dictionary
+            for k, v in self.classes.items():
+                objs = self.__session.query(v).all()
+                if len(objs) > 0:
+                    for obj in objs:
+                        key = "{}.{}".format(obj.__class__.name, obj.id)
+                        db_dict[key] = obj
+            return db_dict
 
     def new(self, obj):
         """
@@ -79,7 +84,7 @@ class DBStorage:
 
         Base.metadata.create_all(self.__engine)
 
-        Session = sessionmaker(bind=self.__engine, exprire_on_commit=False)
+        Session = sessionmaker(bind=self.__engine, expire_on_commit=False)
         self.__session = scoped_session(Session)
 
     def close(self):
