@@ -4,8 +4,9 @@ import cmd
 import sys
 import shlex
 import json
+import models
+from models import storage
 from models.base_model import BaseModel
-from models.__init__ import storage
 from models.user import User
 from models.place import Place
 from models.state import State
@@ -18,32 +19,15 @@ class HBNBCommand(cmd.Cmd):
     """ Contains the functionality for the HBNB console"""
 
     # determines prompt for interactive/non-interactive modes
-    prompt = '(hbnb) ' if sys.__stdin__.isatty() else ''
+    prompt = "(hbnb) "
 
     classes = {
                'BaseModel': BaseModel, 'User': User, 'Place': Place,
                'State': State, 'City': City, 'Amenity': Amenity,
                'Review': Review
               }
-    dot_cmds = ['all', 'count', 'show', 'destroy', 'update']
-    types = {
-             'number_rooms': int, 'number_bathrooms': int,
-             'max_guest': int, 'price_by_night': int,
-             'latitude': float, 'longitude': float
-            }
 
-    def preloop(self):
-        """Prints if isatty is false"""
-        if not sys.__stdin__.isatty():
-            print('(hbnb)')
-
-    def postcmd(self, stop, line):
-        """Prints if isatty is false"""
-        if not sys.__stdin__.isatty():
-            print('(hbnb) ', end='')
-        return stop
-
-    def do_quit(self, command):
+    def do_quit(self, args):
         """ Method to exit the HBNB console"""
         exit()
 
@@ -53,7 +37,6 @@ class HBNBCommand(cmd.Cmd):
 
     def do_EOF(self, arg):
         """ Handles EOF to exit program """
-        print()
         exit()
 
     def help_EOF(self):
@@ -70,8 +53,8 @@ class HBNBCommand(cmd.Cmd):
         if len(arg_list) < 1:
             print("** class name missing **")
             return
-        if (arg_list[0] in HBNBCommand.classes.keys()):
-            new_instance = HBNBCommand.classes[arg_list[0]]()
+        if (arg_list[0] in models.classes.keys()):
+            new_instance = eval(arg_list[0])()
             if len(arg_list) > 1:
                 dic = {}
                 for arg in range(1, len(arg_list)):
@@ -84,12 +67,13 @@ class HBNBCommand(cmd.Cmd):
                         value = value.replace('_', ' ')
                     elif "." in value:
                         value = float(value)
-                    else:
-                        if type(value) == int:
-                            value = int(value)
+                    try:
+                        value = eval(value)
+                    except Exception:
+                        pass
                     setattr(new_instance, key, value)
             new_instance.save()
-            print("{}".format(new_instance.id))
+            print(new_instance.id)
         else:
             print("** class doesn't exist **")
 
@@ -100,29 +84,23 @@ class HBNBCommand(cmd.Cmd):
 
     def do_show(self, args):
         """ Method to show an individual object """
-        new = args.partition(" ")
-        c_name = new[0]
-        c_id = new[2]
-
-        # guard against trailing args
-        if c_id and ' ' in c_id:
-            c_id = c_id.partition(' ')[0]
-
-        if not c_name:
+        args = shlex.split(args)
+        if len(args) == 0:
             print("** class name missing **")
             return
-
-        if c_name not in HBNBCommand.classes:
-            print("** class doesn't exist **")
-            return
-
-        if not c_id:
+        if len(args) == 1:
             print("** instance id missing **")
             return
-
-        key = c_name + "." + c_id
+        obj_dict = storage.all(args[0])
         try:
-            print(storage.self__objects[key])
+            eval(args[0])
+        except NameError:
+            print("** class doesn't exist **")
+            return
+        key = args[0] + "." + args[1]
+        try:
+            value = obj_dict[key]
+            print(value)
         except KeyError:
             print("** no instance found **")
 
@@ -133,31 +111,28 @@ class HBNBCommand(cmd.Cmd):
 
     def do_destroy(self, args):
         """ Destroys a specified object """
-        new = args.partition(" ")
-        c_name = new[0]
-        c_id = new[2]
-        if c_id and ' ' in c_id:
-            c_id = c_id.partition(' ')[0]
-
-        if not c_name:
+        args = shlex.split(args)
+        if len(args) == 0:
             print("** class name missing **")
             return
-
-        if c_name not in HBNBCommand.classes:
-            print("** class doesn't exist **")
-            return
-
-        if not c_id:
+        elif len(args) == 1:
             print("** instance id missing **")
             return
-
-        key = c_name + "." + c_id
-
+        class_name = args[0]
+        class_id = args[1]
+        storage.reload()
+        obj_dict = storage.all()
         try:
-            del(storage.all()[key])
-            storage.save()
+            eval(class_name)
+        except NameError:
+            print("** class doesn't exist **")
+            return
+        key = class_name + "." + class_id
+        try:
+            del obj_dict[key]
         except KeyError:
             print("** no instance found **")
+        storage.save()
 
     def help_destroy(self):
         """ Help information for the destroy command """
@@ -166,21 +141,22 @@ class HBNBCommand(cmd.Cmd):
 
     def do_all(self, args):
         """ Shows all objects, or all objects of a class"""
-        print_list = []
-
-        if args:
-            args = args.split(' ')[0]  # remove possible trailing args
-            if args not in HBNBCommand.classes:
-                print("** class doesn't exist **")
-                return
-            for k, v in storage.self.__objects.items():
-                if k.split('.')[0] == args:
-                    print_list.append(str(v))
-        else:
-            for k, v in storage.self.__objects.items():
-                print_list.append(str(v))
-
-        print(print_list)
+        storage.reload()
+        obj_list = []
+        args = args.split(" ")
+        objects = storage.all(args[0])
+        if args == "":
+            for key, value in objects.items():
+                obj_list.append(str(value))
+            print(json.dumps(obj_list))
+            return
+        if (args[0] not in HBNBCommand.classes.keys()):
+            print("** class doesn't exist **")
+            return
+        for key, value in objects.items():
+            if args[0] in key:
+                obj_list.append(str(value))
+        print(json.dumps(obj_list))
 
     def help_all(self):
         """ Help information for the all command """
@@ -189,11 +165,22 @@ class HBNBCommand(cmd.Cmd):
 
     def do_count(self, args):
         """Count current number of class instances"""
-        count = 0
-        for k, v in storage._self__objects.items():
-            if args == k.split('.')[0]:
-                count += 1
-        print(count)
+        obj_list = []
+        storage.reload()
+        objects = storage.all()
+        try:
+            if len(args) != 0:
+                eval(args)
+        except NameError:
+            print("** class doesn't exist **")
+            return
+        for key, val in objects.items():
+            if len(args) != 0:
+                if type(val) is eval(args):
+                    obj_list.append(val)
+            else:
+                obj_list.append(val)
+        print(len(obj_list))
 
     def help_count(self):
         """ """

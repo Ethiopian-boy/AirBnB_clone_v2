@@ -52,11 +52,11 @@ class BaseModel:
         """Convert instance into dict format"""
         if '_sa_instance_state' in self.__dict__:
             del self.__dict__["_sa_instance_state"]
-        dictionary = dict(self.__dict__)
-        dictionary["__class__"] = type(self).__name__
-        dictionary['created_at'] = self.created_at.isoformat()
-        dictionary['updated_at'] = self.updated_at.isoformat()
-        return dictionary
+        my_dict = dict(self.__dict__)
+        my_dict["__class__"] = type(self).__name__
+        my_dict['created_at'] = self.created_at.isoformat()
+        my_dict['updated_at'] = self.updated_at.isoformat()
+        return my_dict
 
     def delete(self):
         """ Delete the current instance from the storage"""

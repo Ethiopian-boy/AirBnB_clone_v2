@@ -37,24 +37,25 @@ class DBStorage:
         """
         Query current database session
         """
-        classes = {'User': User, 'Place': Place, 'State': State, 'City': City,
-                   'Amenity': Amenity, 'Review': Review}
-
         db_dict = {}
-
         if cls != "":
-            objs = self.__session.query(self.classes[cls]).all()
-            for obj in objs:
-                key = "{}.{}".format(obj.__class__.name, obj.id)
-                db_dict[key] = obj
-            return db_dict
+            try:
+                objs = self.__session.query(models.classes[cls]).all()
+                for obj in objs:
+                    key = "{}.{}".format(obj.__class__.__name__, obj.id)
+                    db_dict[key] = obj
+                return db_dict
+            except KeyError:
+                pass
         else:
-            for k, v in self.classes.items():
-                objs = self.__session.query(v).all()
-                if len(objs) > 0:
-                    for obj in objs:
-                        key = "{}.{}".format(obj.__class__.name, obj.id)
-                        db_dict[key] = obj
+            for k, v in models.classes.items():
+                if k != "BaseModel":
+                    objs = self.__session.query(v).all()
+                    if len(objs) > 0:
+                        for obj in objs:
+                            key = "{}.{}".format(obj.__class__.__name__,
+                                                 obj.id)
+                            db_dict[key] = obj
             return db_dict
 
     def new(self, obj):
@@ -73,7 +74,7 @@ class DBStorage:
         """
         delete from the current database session obj if not None
         """
-        if obj:
+        if obj is not None:
             self.__session.delete(obj)
 
     def reload(self):
@@ -82,10 +83,10 @@ class DBStorage:
         create the current database session
         """
 
-        Base.metadata.create_all(self.__engine)
-
-        Session = sessionmaker(bind=self.__engine, expire_on_commit=False)
-        self.__session = scoped_session(Session)
+        self.__session = Base.metadata.create_all(self.__engine)
+        factory = sessionmaker(bind=self.__engine, expire_on_commit=False)
+        Session = scoped_session(factory)
+        self.__session = Session()
 
     def close(self):
         """
