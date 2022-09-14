@@ -2,6 +2,9 @@
 """ """
 from tests.test_models.test_base_model import test_basemodel
 from models.place import Place
+from os import getenv, remove
+
+storage = getenv("HBNB_TYPE_STORAGE", "fs")
 
 
 class test_Place(test_basemodel):

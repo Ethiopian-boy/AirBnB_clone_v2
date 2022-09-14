@@ -3,6 +3,8 @@
 from tests.test_models.test_base_model import test_basemodel
 from models.city import City
 
+storage = getenv("HBNB_TYPE_STORAGE", "fs")
+
 
 class test_City(test_basemodel):
     """ """
@@ -13,11 +15,13 @@ class test_City(test_basemodel):
         self.name = "City"
         self.value = City
 
+    @unittest.skipIf(storage == "db", "Testing database storage only")
     def test_state_id(self):
         """ """
         new = self.value()
         self.assertEqual(type(new.state_id), str)
 
+    @unittest.skipIf(storage == "db", "Testing database storage only")
     def test_name(self):
         """ """
         new = self.value()
