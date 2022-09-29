@@ -47,7 +47,6 @@ class FileStorage:
     def reload(self):
         """Loads storage dictionary from file"""
         try:
-            temp = {}
             with open(FileStorage.__file_path, encoding="UTF8") as f:
                 FileStorage.__objects = json.load(f)
             for key, val in FileStorage.__objects.items():
